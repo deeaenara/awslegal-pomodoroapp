@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🍅 TomʌɪDos – AWS Legal Pomodoro App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-light: #f5f5f0;
+      --bg-dark: #1f1f1f;
+      --text-light: #303030;
+      --text-dark: #f5f5f0;
+      --accent: #4CAF50;
+      --badge: #ef476f;
+      --card-bg-light: #fff;
+      --card-bg-dark: #2e2e2e;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-light);
+      color: var(--text-light);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    body.dark {
+      background-color: var(--bg-dark);
+      color: var(--text-dark);
+    }
+
+    header {
+      background-color: #203040;
+      color: #fff;
+      padding: 2rem 1rem 1rem;
+      text-align: center;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.5rem;
+      margin: 0;
+    }
+
+    .timer {
+      font-size: 4rem;
+      margin: 2rem 0 1rem;
+      text-align: center;
+    }
+
+    .task-input {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    .task-input input {
+      padding: 0.5rem;
+      width: 60%;
+      max-width: 400px;
+      font-size: 1rem;
+    }
+
+    .task-input button {
+      margin-left: 0.5rem;
+      padding: 0.5rem 1rem;
+    }
+
+    .task-list {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .task-item {
+      font-size: 1rem;
+      margin: 0.3rem auto;
+      max-width: 400px;
+      padding: 0.5rem;
+      border-radius: 8px;
+      background: var(--card-bg-light);
+      transition: background 0.3s, text-decoration 0.3s;
+      cursor: pointer;
+    }
+
+    .task-item.checked {
+      text-decoration: line-through;
+      background: #b2dfdb;
+    }
+
+    body.dark .task-item {
+      background: var(--card-bg-dark);
+    }
+
+    .controls, .footer-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 0.8rem 1.2rem;
+      font-size: 1rem;
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .footer-bar {
+      position: sticky;
+      bottom: 0;
+      background: #ffffffcc;
+      backdrop-filter: blur(6px);
+      border-top: 1px solid #ccc;
+      padding: 0.6rem;
+      justify-content: space-between;
+      font-size: 0.95rem;
+    }
+
+    body.dark .footer-bar {
+      background: #2e2e2ecc;
+      border-top: 1px solid #444;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      bottom: 1rem;
+      left: 1rem;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .log, .calendar, .badge-shelf {
+      margin: 2rem auto;
+      max-width: 700px;
+      padding: 1rem;
+      background: var(--card-bg-light);
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+      transition: background 0.3s;
+    }
+
+    body.dark .log,
+    body.dark .calendar,
+    body.dark .badge-shelf {
+      background: var(--card-bg-dark);
+    }
+
+    .log-entry {
+      border-bottom: 1px solid #eee;
+      padding: 0.5rem 0;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+
+    .calendar-cell {
+      aspect-ratio: 1/1;
+      background: #eee;
+      border-radius: 4px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .calendar-cell.active {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .badge-shelf {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .badge {
+      background: var(--badge);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      animation: pulse 1s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.1); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🍅 TomʌɪDos</h1>
+    <p>Track. Win. Repeat.</p>
+  </header>
+
+  <div class="timer" id="timer">25:00</div>
+
+  <div class="task-input">
+    <input type="text" id="taskInput" placeholder="Enter focus task...">
+    <button onclick="addTask()">Add Task</button>
+  </div>
+  <div class="task-list" id="taskList"></div>
+
+  <div class="controls">
+    <button onclick="startPomodoro()">🍅 Pomodoro</button>
+    <button onclick="takeShortBreak()">Short Break</button>
+    <button onclick="takeLongBreak()">Long Break</button>
+    <button onclick="resetTimer()">🔄️ Reset</button>
+    <button onclick="exportLogs()">📂 Export Logs</button>
+    <button onclick="downloadPDF()">📄 PDF Report</button>
+  </div>
+
+  <div class="log">
+    <h2>Focus Logs</h2>
+    <div id="logEntries"></div>
+  </div>
+
+  <div class="calendar">
+    <h2>🗓️ Streak Calendar</h2>
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+
+  <div class="badge-shelf">
+    <div class="badge" id="badge1">🎖️ Novice</div>
+    <div class="badge" id="badge2" style="display:none">💼 Grand Counsel</div>
+    <div class="badge" id="badge3" style="display:none">👑 Associate Partner</div>
+  </div>
+
+  <div class="footer-bar">
+    <div>🍅 Tomatoes: <span id="tomatoCount">0</span></div>
+    <div>🔥 Streak: <span id="streakCount">0</span></div>
+    <div>🎖️ Title: <span id="title">Novice</span></div>
+  </div>
+
+  <button class="theme-toggle" onclick="toggleTheme()">🌗</button>
+
+  <script>
+    let timer;
+    let totalSeconds = 1500;
+    let tomatoes = parseInt(localStorage.getItem('tomatoes') || 0);
+    let streak = parseInt(localStorage.getItem('streak') || 0);
+    let title = localStorage.getItem('title') || 'Novice';
+    let streakDates = JSON.parse(localStorage.getItem('streakDates') || '[]');
+    const today = new Date().toDateString();
+    let pomodoroCount = 0;
+
+    function formatTime(s) {
+      const m = Math.floor(s / 60), sec = s % 60;
+      return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    function startPomodoro() {
+      const task = document.getElementById('taskInput').value;
+      if (task) logTask(task);
+      startTimer(1500, () => {
+        logSession('Focus');
+        pomodoroCount++;
+        tomatoes++;
+        if (!streakDates.includes(today)) streakDates.push(today);
+        if (pomodoroCount % 4 === 0) takeLongBreak();
+        else takeShortBreak();
+      });
+    }
+
+    function takeShortBreak() {
+      startTimer(300, () => logSession('Short Break'));
+    }
+
+    function takeLongBreak() {
+      startTimer(900, () => logSession('Long Break'));
+    }
+
+    function startTimer(duration, callback) {
+      clearInterval(timer);
+      totalSeconds = duration;
+      document.getElementById('timer').innerText = formatTime(totalSeconds);
+      timer = setInterval(() => {
+        if (totalSeconds > 0) {
+          totalSeconds--;
+          document.getElementById('timer').innerText = formatTime(totalSeconds);
+        } else {
+          clearInterval(timer);
+          timer = null;
+          callback();
+          updateTitles();
+          saveProgress();
+        }
+      }, 1000);
+    }
+
+    function resetTimer() {
+      clearInterval(timer);
+      timer = null;
+      totalSeconds = 1500;
+      document.getElementById('timer').innerText = formatTime(totalSeconds);
+    }
+
+    function logSession(type) {
+      const log = document.getElementById('logEntries');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerText = `✔️ ${type} completed at ${new Date().toLocaleTimeString()}`;
+      log.prepend(entry);
+    }
+
+    function logTask(task) {
+      const list = document.getElementById('taskList');
+      const item = document.createElement('div');
+      item.className = 'task-item';
+      item.innerText = task;
+      item.onclick = () => item.classList.toggle('checked');
+      list.appendChild(item);
+      document.getElementById('taskInput').value = '';
+    }
+
+    function addTask() {
+      const task = document.getElementById('taskInput').value;
+      if (task.trim()) logTask(task);
+    }
+
+    function exportLogs() {
+      const logs = [...document.querySelectorAll('.log-entry')].map(e => e.innerText);
+      const blob = new Blob([logs.join('\n')], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'TomaiDos_Logs.csv';
+      link.click();
+    }
+
+    function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text("TomʌɪDos – Progress Report", 10, 10);
+      doc.text(`Tomatoes: ${tomatoes}`, 10, 20);
+      doc.text(`Streak: ${streak}`, 10, 30);
+      doc.text(`Title: ${title}`, 10, 40);
+      doc.save("TomaiDos_Report.pdf");
+    }
+
+    function updateTitles() {
+      streak = streakDates.length;
+      if (streak >= 10) {
+        title = 'Associate Partner';
+        document.getElementById('badge3').style.display = 'inline-block';
+      } else if (streak >= 5) {
+        title = 'Grand Counsel';
+        document.getElementById('badge2').style.display = 'inline-block';
+      } else {
+        title = 'Novice';
+      }
+      document.getElementById('tomatoCount').innerText = tomatoes;
+      document.getElementById('streakCount').innerText = streak;
+      document.getElementById('title').innerText = title;
+    }
+
+    function saveProgress() {
+      localStorage.setItem('tomatoes', tomatoes);
+      localStorage.setItem('streak', streak);
+      localStorage.setItem('title', title);
+      localStorage.setItem('streakDates', JSON.stringify(streakDates));
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+    }
+
+    function buildCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      grid.innerHTML = '';
+      const days = 30;
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const cell = document.createElement('div');
+        cell.className = 'calendar-cell';
+        const dateStr = date.toDateString();
+        if (streakDates.includes(dateStr)) cell.classList.add('active');
+        cell.title = dateStr;
+        cell.innerText = date.getDate();
+        grid.appendChild(cell);
+      }
+    }
+
+    updateTitles();
+    buildCalendar();
+  </script>
+</body>
+</html>
